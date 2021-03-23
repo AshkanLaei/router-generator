@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<link rel="icon" href="data:;base64,iVBORw0KGgo=">
+	<title>Router Generator</title>
+	<link rel="stylesheet" href="bootstrap.min.css">
+	<script src="bootstrap.bundle.min.js"></script>
+	<script src="vue.js"></script>
+</head>
+<body>
+	<div class="container py-3" id="root">
+		<div class="d-md-flex gap-3 mb-3 justify-content-center">
+			<h1 class="fw-light text-center mb-2 mb-md-0">Router Generator</h1>
+			<button class="btn btn-outline-dark d-block mx-auto mx-md-0" data-bs-toggle="modal" data-bs-target="#helpModal">How to use</button>
+		</div>
+		<div>
+			<div v-for="route, routeId in routes" class="rounded p-2 border mb-2">
+				<div class="row g-2">
+					<div class="col-md-auto">
+						<select class="form-select" v-model="route.method">
+							<option v-for="method in methods" :value="method">{{ method.toUpperCase() }}</option>
+						</select>
+					</div>
+					<div class="input-group flex-nowrap col-md" title="url pattern, leave it empty for homepage">
+						<span class="input-group-text bg-transparent">/</span>
+						<input type="text" class="form-control border-start-0" name="pattern" placeholder="url pattern" v-model="route.pattern">
+					</div>
+					<div class="input-group flex-nowrap col-md" title="function that should be called when url and pattern match">
+						<input type="text" class="form-control text-end border-end-0" name="callback" placeholder="callback function" v-model="route.callback">
+						<span class="input-group-text bg-transparent">({{ callbackArguments(route.pattern || '') }})</span>
+					</div>
+					<div class="col-md-auto">
+						<button class="btn btn-danger d-block w-100 rounded" @click="routes.splice(routeId, 1)" :disabled="routes.length <= 1">&times;</button>
+					</div>
+				</div>
+			</div>
+			<button class="btn btn-outline-primary d-block mx-auto" @click="routes.push({ method: 'get', pattern: '', callback: '' })">Add Route</button>
+		</div>
+		<hr>
+		<div class="row mb-3">
+			<label class="col-md-auto py-2" for="language">Target Environment:</label>
+			<select class="col-md-auto form-select w-auto" id="language" v-model="selectedLanguage">
+				<option v-for="options, lang in langs" :value="lang">{{ options.title }}</option>
+			</select>
+			<span class="col-md-auto ps-0"></span>
+			<div class="col-md-auto form-check form-switch py-2">
+				<input type="checkbox" class="form-check-input" id="minified" v-model="minified">
+				<label for="minified" class="form-check-label">Generate Minified Code</label>
+			</div>
+			<button class="col-md-auto btn btn-outline-success d-block" @click="genCode()">Generate</button>
+		</div>
+		<pre class="mb-0 bg-light p-3 border rounded text-wrap"><code>{{ code }}</code></pre>
+	</div>
+	<div class="modal fade" id="helpModal" tabindex="-1" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="exampleModalLabel">How to use Router Generator</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+				<div class="modal-body">
+					<p>Hello! You are learning how to work with Router Generator. In this short tutorial, we will design a simple application programming interface with Router Generator. I hope you enjoy this work.</p><p class="lead">if you had a problem, be sure to <a href="https://github.com/AshkanLaei/router-generator/issues/new" target="_blank">let me know through GitHub issues</a>.</p>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary d-block mx-auto" data-bs-dismiss="modal">Okay, let's get started!</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	<script>
+		let app = new Vue({
+			el: '#root',
+			data: {
+				methods: ['get', 'post', 'put', 'delete'],
+				langs: {
+					php: {
+						title: 'PHP',
+						generateCode(routes) {
+							result = '<?php $method=$_SERVER["REQUEST_METHOD"];$uri=$_SERVER["REQUEST_URI"];'
+							for (method in routes) {
+								result += `if($method=="${method.toUpperCase()}"){`
+								for (pattern in routes[method]) {
+									result += `if(preg_match('#^${pattern.replace(/:(\w+)/g, '(?<$1>[^/]+)')}$#',$uri${pattern.match(/:\w+/) ? ',$matches' : ''}){${routes[method][pattern]}(${(pattern.match(/(?<=:)\w+/g) || []).map(p => '$matches["' + p + '"],').join('') + '$_REQUEST'});}`
+								}
+								result += '}'
+							}
+							return result
+						}
+					},
+					expressjs: {
+						title: 'Node/Express',
+						generateCode(routes) {
+							result = 'const express=require("express");let app=express();'
+							for (method in routes) {
+								for (pattern in routes[method]) {
+									result += `app.${method}("${pattern}",(req,res)=>${routes[method][pattern]}())`
+								}
+							}
+							return result
+						}
+					}
+				},
+				routes: [{ method: 'get', pattern: '', callback: '' }],
+				selectedLanguage: 'php',
+				minified: true,
+				code: 'Use "Generate" button for generating code!'
+			},
+			methods: {
+				callbackArguments(pattern) {
+					return (pattern.match(/(?<=:)\w+/g) || []).map(p => p + ', ').join('') + 'queries'
+				},
+				genCode() {
+					let newRoutes = {}
+					for (const method of this.methods) newRoutes[method] = {}
+					for (const route of this.routes) if (route.callback) newRoutes[route.method]['/' + route.pattern] = route.callback
+					for (const method in newRoutes) if (!Object.keys(newRoutes[method]).length) delete newRoutes[method]
+					this.code = this.langs[this.selectedLanguage].generateCode(newRoutes)
+				}
+			},
+			mounted() {
+				new bootstrap.Modal(document.getElementById('helpModal'), {}).show()
+			}
+		})
+	</script>
+</body>
+</html>
