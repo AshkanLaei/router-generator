@@ -38,9 +38,9 @@
 			<button class="btn btn-outline-primary d-block mx-auto" @click="routes.push({ method: 'get', pattern: '', callback: '' })">Add Route</button>
 		</div>
 		<hr>
-		<div class="row mb-3">
-			<label class="col-md-auto py-2" for="language">Target Environment:</label>
-			<select class="col-md-auto form-select w-auto" id="language" v-model="selectedLanguage">
+		<div class="row mb-3 mx-0">
+			<label class="col-sm-auto py-2 ps-0" for="language">Target Environment:</label>
+			<select class="col-sm-auto form-select w-auto" id="language" v-model="selectedLanguage">
 				<option v-for="options, lang in langs" :value="lang">{{ options.title }}</option>
 			</select>
 			<span class="col-md-auto ps-0"></span>
